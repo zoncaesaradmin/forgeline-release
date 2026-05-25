@@ -6,19 +6,12 @@ PRODUCT="${PRODUCT:-forgeline}"
 VERSION="${VERSION:-latest}"
 INSTALL_DIR="${INSTALL_DIR:-}"
 VERIFY_CHECKSUMS="${VERIFY_CHECKSUMS:-1}"
-INSTALL_SERVICE="${INSTALL_SERVICE:-0}"
-START_SERVICE="${START_SERVICE:-0}"
 REPO_OWNER="${REPO_OWNER:-zoncaesaradmin}"
 REPO_NAME="${REPO_NAME:-forgeline-release}"
 REPO_REF="${REPO_REF:-main}"
 BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_REF}/release}"
-SERVICE_NAME="${SERVICE_NAME:-forgeline}"
 SERVICE_ADDR="${SERVICE_ADDR:-:8080}"
-SYSTEMD_UNIT_DIR="${SYSTEMD_UNIT_DIR:-/etc/systemd/system}"
 SYSTEM_INSTALL_DIR='/usr/local/bin'
-SYSTEM_LOG_DIR='/var/log/forgeline'
-SYSTEM_LOG_FILE="${SYSTEM_LOG_DIR}/forgeline.log"
-SYSTEM_WORK_DIR='/var/lib/forgeline'
 
 fail() {
   printf 'Error: %s\n' "$1" >&2
@@ -27,10 +20,6 @@ fail() {
 
 info() {
   printf '%s\n' "$1"
-}
-
-warn() {
-  printf 'Warning: %s\n' "$1" >&2
 }
 
 section() {
@@ -170,7 +159,6 @@ manual_stop_command() {
 
 print_manual_run_instructions() {
   ensure_runtime_log_dir
-  info "Automatic service management: not configured."
   info "Start manually:"
   info "  $(manual_start_command)"
   info "Stop manually:"
@@ -179,10 +167,6 @@ print_manual_run_instructions() {
   else
     info "  Press Ctrl-C if running in the foreground, or run: $(manual_stop_command)"
   fi
-}
-
-service_requested() {
-  bool_true "$INSTALL_SERVICE" || bool_true "$START_SERVICE"
 }
 
 resolve_runtime_log_file() {
@@ -277,124 +261,6 @@ resolve_default_install_dir() {
   printf '%s\n' "${HOME}/.local/bin"
 }
 
-systemd_is_available() {
-  [ "$os" = 'linux' ] && command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]
-}
-
-systemd_service_exists() {
-  [ -f "$systemd_unit_path" ]
-}
-
-systemd_service_is_active() {
-  systemctl is-active --quiet "$systemd_unit_name"
-}
-
-ensure_systemd_service_dirs() {
-  mkdir -p "$SYSTEM_LOG_DIR" "$SYSTEM_WORK_DIR" || fail "Failed to create service directories"
-  touch "$SYSTEM_LOG_FILE" || fail "Failed to create log file: $SYSTEM_LOG_FILE"
-  chmod 0644 "$SYSTEM_LOG_FILE" || fail "Failed to set log file permissions: $SYSTEM_LOG_FILE"
-}
-
-write_systemd_unit() {
-  cat > "$systemd_unit_path" <<EOF
-[Unit]
-Description=Forgeline Server
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-WorkingDirectory=${SYSTEM_WORK_DIR}
-ExecStart=${target_path} -addr ${SERVICE_ADDR} -log-file ${SYSTEM_LOG_FILE}
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-}
-
-manage_linux_service() {
-  service_exists=0
-  service_was_active=0
-  service_definition_updated=0
-  service_available=0
-  service_mode='manual'
-  service_status='not configured'
-  service_reason=''
-
-  if [ "$os" != 'linux' ]; then
-    service_reason="automatic service installation is only implemented on Linux systems with systemd"
-    if service_requested; then
-      warn "Service installation is only implemented for Linux systems with systemd. Skipping service setup."
-    fi
-    return
-  fi
-
-  if ! systemd_is_available; then
-    service_reason="systemd was not detected"
-    if service_requested; then
-      warn "systemd was not detected. The binary was installed, but no service was configured."
-    fi
-    return
-  fi
-
-  service_available=1
-
-  if systemd_service_exists; then
-    service_exists=1
-    service_status='installed'
-    if systemd_service_is_active; then
-      service_was_active=1
-      service_status='running'
-    fi
-  fi
-
-  if ! service_requested && [ "$service_exists" -eq 0 ]; then
-    service_reason="systemd is available, but INSTALL_SERVICE was not requested"
-    return
-  fi
-
-  service_mode='systemd'
-
-  if bool_true "$INSTALL_SERVICE"; then
-    info "Installing systemd service definition: ${systemd_unit_name}"
-    ensure_systemd_service_dirs
-    write_systemd_unit
-    systemctl daemon-reload
-    systemctl enable "$systemd_unit_name" >/dev/null
-    service_exists=1
-    service_definition_updated=1
-    service_status='installed'
-    info "Installed systemd service: ${systemd_unit_name}"
-  fi
-
-  if [ "$service_exists" -eq 1 ] && [ "$service_was_active" -eq 1 ] && { [ "$binary_changed" -eq 1 ] || [ "$service_definition_updated" -eq 1 ]; }; then
-    info "Stopping active service: ${systemd_unit_name}"
-    systemctl stop "$systemd_unit_name"
-    info "Starting service: ${systemd_unit_name}"
-    systemctl start "$systemd_unit_name"
-    service_status='running'
-    info "Started service: ${systemd_unit_name}"
-    return
-  fi
-
-  if bool_true "$START_SERVICE"; then
-    info "Starting service: ${systemd_unit_name}"
-    systemctl start "$systemd_unit_name"
-    service_status='running'
-    info "Started service: ${systemd_unit_name}"
-    return
-  fi
-
-  if [ "$service_exists" -eq 1 ]; then
-    if [ "$service_status" = 'installed' ]; then
-      info "Service is installed but not started: ${systemd_unit_name}"
-    fi
-    info "Manage the service with: systemctl {start|stop|restart|status} ${systemd_unit_name}"
-  fi
-}
-
 require_command curl
 require_command uname
 require_command awk
@@ -422,35 +288,14 @@ artifact_name="${artifact_stem}_${os}_${arch}${artifact_suffix}"
 release_url="${BASE_URL%/}/${PRODUCT}/${VERSION}"
 checksums_url="${release_url}/SHA256SUMS"
 artifact_url="${release_url}/${artifact_name}"
-systemd_unit_name="${SERVICE_NAME}.service"
-systemd_unit_path="${SYSTEMD_UNIT_DIR%/}/${systemd_unit_name}"
 binary_changed=0
 binary_action='unknown'
-service_mode='manual'
-service_status='not configured'
-service_reason=''
-service_available=0
-
-if [ "$os" = 'linux' ] && bool_true "$START_SERVICE"; then
-  INSTALL_SERVICE=1
-fi
 
 if [ -z "$INSTALL_DIR" ]; then
   INSTALL_DIR="$(resolve_default_install_dir)"
 fi
 
-if [ "$os" = 'linux' ] && { service_requested || [ -f "$systemd_unit_path" ]; }; then
-  if [ "${INSTALL_DIR%/}" != "$SYSTEM_INSTALL_DIR" ]; then
-    info "Using fixed Linux service install path: ${SYSTEM_INSTALL_DIR}"
-  fi
-  INSTALL_DIR="$SYSTEM_INSTALL_DIR"
-fi
-
 target_path="${INSTALL_DIR%/}/${install_name}${artifact_suffix}"
-
-if [ "$os" = 'linux' ] && { [ -f "$systemd_unit_path" ] || { service_requested && systemd_is_available; }; } && ! is_root; then
-  fail "Linux service install and upgrade must run as root. Re-run with sudo."
-fi
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT INT TERM
@@ -479,31 +324,11 @@ fi
 section "Binary"
 install_binary "$artifact_file" "$target_path"
 
-section "Service"
-manage_linux_service
-
 section "Summary"
 info "Binary status: ${binary_action}"
 info "Binary path: ${target_path}"
-
-if [ "$service_mode" = 'systemd' ] && [ "$service_available" -eq 1 ] && [ "$service_status" != 'not configured' ]; then
-  info "Service manager: systemd"
-  info "Service unit: ${systemd_unit_name}"
-  info "Service status: ${service_status}"
-  info "Log file: ${SYSTEM_LOG_FILE}"
-  info "Working directory: ${SYSTEM_WORK_DIR}"
-  info "Start command: sudo systemctl start ${systemd_unit_name}"
-  info "Stop command: sudo systemctl stop ${systemd_unit_name}"
-  info "Restart command: sudo systemctl restart ${systemd_unit_name}"
-  info "Status command: sudo systemctl status ${systemd_unit_name}"
-else
-  if [ -n "$service_reason" ]; then
-    info "Service setup note: ${service_reason}"
-  fi
-  info "Manual log file: ${runtime_log_file}"
-  print_manual_run_instructions
-fi
-
+info "Log file: ${runtime_log_file}"
+print_manual_run_instructions
 print_path_guidance
 info "Help command: ${install_name}${artifact_suffix} --help"
-info "Logs: direct runs write to your terminal; service-managed runs write to service logs."
+info "Logs: the binary writes to the log file shown above."
