@@ -113,7 +113,7 @@ resolve_build_dir() {
     return
   fi
 
-  for candidate_dir in "$SOURCE_DIR" "$SOURCE_DIR/backend" "$SOURCE_DIR/server"; do
+  for candidate_dir in "$SOURCE_DIR/app" "$SOURCE_DIR" "$SOURCE_DIR/backend" "$SOURCE_DIR/server"; do
     if makefile_supports_release "${candidate_dir}/Makefile"; then
       BUILD_DIR="$candidate_dir"
       return

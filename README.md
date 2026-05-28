@@ -7,7 +7,7 @@ user-facing documentation, not private source code or internal build logic.
 
 ## Available products
 
-- `forgeline`: installs the `forgeline` binary
+- `forgeline`: installs the combined `forgeline` app binary that embeds both backend and MCP
 
 ## Supported platforms
 
@@ -68,9 +68,9 @@ curl -fsSL https://raw.githubusercontent.com/zoncaesaradmin/forgeline-release/ma
 
 ## Install behavior by platform
 
-- macOS: binary-only install with manual start/stop guidance
-- Linux: binary-only install with manual start/stop guidance
-- Windows: binary-only install with manual start/stop guidance
+- macOS: combined app binary install with manual start/stop guidance
+- Linux: combined app binary install with manual start/stop guidance
+- Windows: combined app binary install with manual start/stop guidance
 
 ## Install from this public repo
 
@@ -95,8 +95,8 @@ What `build.sh` does:
 
 1. clones or updates `../forgeline`, or falls back to `https://github.com/zoncaesaradmin/forgeline.git`
 2. checks out `main`
-3. auto-detects the release-capable source subdirectory, currently `backend/`
-4. runs `make release` there and finds the built `forgeline_*` binaries
+3. auto-detects the release-capable source subdirectory, currently `app/`
+4. runs `make release` there and finds the built `forgeline_*` combined app binaries
 5. copies them into `release/forgeline/latest/`
 6. regenerates `release/forgeline/latest/SHA256SUMS`
 
@@ -106,7 +106,7 @@ Defaults:
 - fallback source repo: `https://github.com/zoncaesaradmin/forgeline.git`
 - source ref: `main`
 - source checkout: `.build/forgeline`
-- build subdir: auto-detected, currently `backend`
+- build subdir: auto-detected, currently `app`
 - target release dir: `release/forgeline/latest`
 
 Optional overrides:
@@ -138,7 +138,7 @@ The installer:
 5. installs or updates the binary in `INSTALL_DIR`
 6. prints what it installed, updated, or skipped
 7. prints the log file location
-8. prints manual start and stop commands for the current platform
+8. prints manual start and stop commands for the combined backend+MCP app for the current platform
 
 Default settings:
 
@@ -199,17 +199,17 @@ If you installed to `$HOME/.local/bin`, make sure that directory is on your
 Manual start command shape:
 
 ```bash
-forgeline -addr ":8080" -log-file "<platform-log-file>"
+forgeline -addr ":8080" -mcp-addr ":8081" -backend-log-file "<platform-backend-log-file>" -mcp-log-file "<platform-mcp-log-file>"
 ```
 
 ## Logs
 
-The installer suggests a user-writable log path for the current platform, for
+The installer suggests user-writable backend and MCP log paths for the current platform, for
 example:
 
-- macOS: `$HOME/Library/Logs/forgeline/forgeline.log`
-- Linux: `$HOME/.local/state/forgeline/forgeline.log`
-- Windows: `%USERPROFILE%/AppData/Local/forgeline/logs/forgeline.log`
+- macOS: `$HOME/Library/Logs/forgeline/forgeline.log` and `$HOME/Library/Logs/forgeline/forgeline-mcp.log`
+- Linux: `$HOME/.local/state/forgeline/forgeline.log` and `$HOME/.local/state/forgeline/forgeline-mcp.log`
+- Windows: `%USERPROFILE%/AppData/Local/forgeline/logs/forgeline.log` and `%USERPROFILE%/AppData/Local/forgeline/logs/forgeline-mcp.log`
 
 ## Uninstall
 

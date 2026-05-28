@@ -11,6 +11,7 @@ REPO_NAME="${REPO_NAME:-forgeline-release}"
 REPO_REF="${REPO_REF:-main}"
 BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_REF}/release}"
 SERVICE_ADDR="${SERVICE_ADDR:-:8080}"
+SERVICE_MCP_ADDR="${SERVICE_MCP_ADDR:-:8081}"
 SYSTEM_INSTALL_DIR='/usr/local/bin'
 
 fail() {
@@ -138,10 +139,10 @@ verify_checksum() {
 manual_start_command() {
   case "$os" in
     windows)
-      printf '"%s" -addr "%s" -log-file "%s"\n' "$target_path" "$SERVICE_ADDR" "$runtime_log_file"
+      printf '"%s" -addr "%s" -mcp-addr "%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$target_path" "$SERVICE_ADDR" "$SERVICE_MCP_ADDR" "$runtime_backend_log_file" "$runtime_mcp_log_file"
       ;;
     *)
-      printf '"%s" -addr "%s" -log-file "%s"\n' "$target_path" "$SERVICE_ADDR" "$runtime_log_file"
+      printf '"%s" -addr "%s" -mcp-addr "%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$target_path" "$SERVICE_ADDR" "$SERVICE_MCP_ADDR" "$runtime_backend_log_file" "$runtime_mcp_log_file"
       ;;
   esac
 }
@@ -169,7 +170,7 @@ print_manual_run_instructions() {
   fi
 }
 
-resolve_runtime_log_file() {
+resolve_runtime_backend_log_file() {
   case "$os" in
     darwin)
       printf '%s\n' "${HOME:-/tmp}/Library/Logs/forgeline/forgeline.log"
@@ -186,9 +187,28 @@ resolve_runtime_log_file() {
   esac
 }
 
+resolve_runtime_mcp_log_file() {
+  case "$os" in
+    darwin)
+      printf '%s\n' "${HOME:-/tmp}/Library/Logs/forgeline/forgeline-mcp.log"
+      ;;
+    linux)
+      printf '%s\n' "${HOME:-/tmp}/.local/state/forgeline/forgeline-mcp.log"
+      ;;
+    windows)
+      printf '%s\n' "${HOME:-/tmp}/AppData/Local/forgeline/logs/forgeline-mcp.log"
+      ;;
+    *)
+      printf '%s\n' '/tmp/forgeline-mcp.log'
+      ;;
+  esac
+}
+
 ensure_runtime_log_dir() {
-  runtime_log_dir="$(dirname "$runtime_log_file")"
-  mkdir -p "$runtime_log_dir" 2>/dev/null || true
+  runtime_backend_log_dir="$(dirname "$runtime_backend_log_file")"
+  runtime_mcp_log_dir="$(dirname "$runtime_mcp_log_file")"
+  mkdir -p "$runtime_backend_log_dir" 2>/dev/null || true
+  mkdir -p "$runtime_mcp_log_dir" 2>/dev/null || true
 }
 
 path_contains_dir() {
@@ -282,7 +302,8 @@ if [ "$os" = 'windows' ]; then
   artifact_suffix='.exe'
 fi
 
-runtime_log_file="$(resolve_runtime_log_file)"
+runtime_backend_log_file="$(resolve_runtime_backend_log_file)"
+runtime_mcp_log_file="$(resolve_runtime_mcp_log_file)"
 
 artifact_name="${artifact_stem}_${os}_${arch}${artifact_suffix}"
 release_url="${BASE_URL%/}/${PRODUCT}/${VERSION}"
@@ -327,8 +348,9 @@ install_binary "$artifact_file" "$target_path"
 section "Summary"
 info "Binary status: ${binary_action}"
 info "Binary path: ${target_path}"
-info "Log file: ${runtime_log_file}"
+info "Backend log file: ${runtime_backend_log_file}"
+info "MCP log file: ${runtime_mcp_log_file}"
 print_manual_run_instructions
 print_path_guidance
 info "Help command: ${install_name}${artifact_suffix} --help"
-info "Logs: the binary writes to the log file shown above."
+info "Logs: the binary writes backend and MCP logs to the files shown above."
