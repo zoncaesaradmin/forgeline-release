@@ -11,10 +11,7 @@ REPO_NAME="${REPO_NAME:-forgeline-release}"
 REPO_REF="${REPO_REF:-main}"
 BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_REF}/release}"
 README_URL="${README_URL:-https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_REF}/README.md}"
-SERVICE_ADDR="${SERVICE_ADDR:-:8080}"
-SERVICE_MCP_ADDR="${SERVICE_MCP_ADDR:-:8081}"
 FORGELINE_HOME="${FORGELINE_HOME:-}"
-SYSTEM_INSTALL_DIR='/usr/local/bin'
 
 fail() {
   printf 'Error: %s\n' "$1" >&2
@@ -145,10 +142,10 @@ verify_checksum() {
 manual_start_command() {
   case "$os" in
     windows)
-      printf '"%s" -addr "%s" -mcp-addr "%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$target_path" "$SERVICE_ADDR" "$SERVICE_MCP_ADDR" "$runtime_backend_log_file" "$runtime_mcp_log_file"
+      printf '"%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$target_path" "$runtime_backend_log_file" "$runtime_mcp_log_file"
       ;;
     *)
-      printf '"%s" -addr "%s" -mcp-addr "%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$target_path" "$SERVICE_ADDR" "$SERVICE_MCP_ADDR" "$runtime_backend_log_file" "$runtime_mcp_log_file"
+      printf '"%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$target_path" "$runtime_backend_log_file" "$runtime_mcp_log_file"
       ;;
   esac
 }
@@ -180,37 +177,11 @@ print_manual_run_instructions() {
 }
 
 resolve_runtime_backend_log_file() {
-  case "$os" in
-    darwin)
-      printf '%s\n' "${HOME:-/tmp}/Library/Logs/forgeline/forgeline.log"
-      ;;
-    linux)
-      printf '%s\n' "${HOME:-/tmp}/.local/state/forgeline/forgeline.log"
-      ;;
-    windows)
-      printf '%s\n' "${HOME:-/tmp}/AppData/Local/forgeline/logs/forgeline.log"
-      ;;
-    *)
-      printf '%s\n' '/tmp/forgeline.log'
-      ;;
-  esac
+  printf '%s\n' "${FORGELINE_HOME}/.local/state/forgeline/forgeline.log"
 }
 
 resolve_runtime_mcp_log_file() {
-  case "$os" in
-    darwin)
-      printf '%s\n' "${HOME:-/tmp}/Library/Logs/forgeline/forgeline-mcp.log"
-      ;;
-    linux)
-      printf '%s\n' "${HOME:-/tmp}/.local/state/forgeline/forgeline-mcp.log"
-      ;;
-    windows)
-      printf '%s\n' "${HOME:-/tmp}/AppData/Local/forgeline/logs/forgeline-mcp.log"
-      ;;
-    *)
-      printf '%s\n' '/tmp/forgeline-mcp.log'
-      ;;
-  esac
+  printf '%s\n' "${FORGELINE_HOME}/.local/state/forgeline/forgeline-mcp.log"
 }
 
 ensure_runtime_log_dir() {
@@ -308,13 +279,7 @@ ensure_forgeline_home_dir() {
 }
 
 resolve_default_install_dir() {
-  if [ "$(id -u)" -eq 0 ]; then
-    printf '%s\n' "$SYSTEM_INSTALL_DIR"
-    return
-  fi
-
-  [ -n "${HOME:-}" ] || fail "HOME is not set. Set INSTALL_DIR explicitly."
-  printf '%s\n' "${HOME}/.local/bin"
+  printf '%s\n' "${FORGELINE_HOME}/.local/bin"
 }
 
 require_command curl
@@ -326,7 +291,6 @@ require_command cp
 require_command chmod
 require_command mv
 require_command dirname
-require_command id
 
 os="$(detect_os)"
 arch="$(detect_arch)"
