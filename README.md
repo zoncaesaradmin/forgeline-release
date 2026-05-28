@@ -59,6 +59,13 @@ curl -fsSL https://raw.githubusercontent.com/zoncaesaradmin/forgeline-release/ma
   sudo env INSTALL_DIR=/usr/local/bin bash
 ```
 
+Recommended install when workspaces should live on a larger mounted disk:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zoncaesaradmin/forgeline-release/main/install.sh | \
+  INSTALL_DIR="$HOME/.local/bin" FORGELINE_HOME=/mnt/large-disk/forgeline bash
+```
+
 ## Install a specific version
 
 ```bash
@@ -199,8 +206,18 @@ If you installed to `$HOME/.local/bin`, make sure that directory is on your
 Manual start command shape:
 
 ```bash
-forgeline -addr ":8080" -mcp-addr ":8081" -backend-log-file "<platform-backend-log-file>" -mcp-log-file "<platform-mcp-log-file>"
+FORGELINE_HOME="/mnt/large-disk/forgeline" forgeline -addr ":8080" -mcp-addr ":8081" -backend-log-file "<platform-backend-log-file>" -mcp-log-file "<platform-mcp-log-file>"
 ```
+
+`FORGELINE_HOME` is the required runtime home unless you pass an explicit backend state directory flag. It becomes the base directory for:
+
+```text
+$FORGELINE_HOME/state
+$FORGELINE_HOME/state/workspaces
+$FORGELINE_HOME/state/controlplane.sqlite
+```
+
+If `FORGELINE_HOME` is not set and you do not pass an explicit backend state directory, the binary will fail fast at startup.
 
 ## Logs
 

@@ -12,6 +12,7 @@ REPO_REF="${REPO_REF:-main}"
 BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_REF}/release}"
 SERVICE_ADDR="${SERVICE_ADDR:-:8080}"
 SERVICE_MCP_ADDR="${SERVICE_MCP_ADDR:-:8081}"
+FORGELINE_HOME="${FORGELINE_HOME:-}"
 SYSTEM_INSTALL_DIR='/usr/local/bin'
 
 fail() {
@@ -137,12 +138,13 @@ verify_checksum() {
 }
 
 manual_start_command() {
+  runtime_home_display="$(runtime_home_display_value)"
   case "$os" in
     windows)
-      printf '"%s" -addr "%s" -mcp-addr "%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$target_path" "$SERVICE_ADDR" "$SERVICE_MCP_ADDR" "$runtime_backend_log_file" "$runtime_mcp_log_file"
+      printf 'FORGELINE_HOME="%s" "%s" -addr "%s" -mcp-addr "%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$runtime_home_display" "$target_path" "$SERVICE_ADDR" "$SERVICE_MCP_ADDR" "$runtime_backend_log_file" "$runtime_mcp_log_file"
       ;;
     *)
-      printf '"%s" -addr "%s" -mcp-addr "%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$target_path" "$SERVICE_ADDR" "$SERVICE_MCP_ADDR" "$runtime_backend_log_file" "$runtime_mcp_log_file"
+      printf 'FORGELINE_HOME="%s" "%s" -addr "%s" -mcp-addr "%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$runtime_home_display" "$target_path" "$SERVICE_ADDR" "$SERVICE_MCP_ADDR" "$runtime_backend_log_file" "$runtime_mcp_log_file"
       ;;
   esac
 }
@@ -160,6 +162,8 @@ manual_stop_command() {
 
 print_manual_run_instructions() {
   ensure_runtime_log_dir
+  info "Runtime workspace home:"
+  info "  $(runtime_home_display_value)"
   info "Start manually:"
   info "  $(manual_start_command)"
   info "Stop manually:"
@@ -168,6 +172,14 @@ print_manual_run_instructions() {
   else
     info "  Press Ctrl-C if running in the foreground, or run: $(manual_stop_command)"
   fi
+}
+
+runtime_home_display_value() {
+  if [ -n "${FORGELINE_HOME}" ]; then
+    printf '%s\n' "$FORGELINE_HOME"
+    return
+  fi
+  printf '/path/to/forgeline-home\n'
 }
 
 resolve_runtime_backend_log_file() {
