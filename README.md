@@ -95,8 +95,8 @@ What `build.sh` does:
 
 1. clones or updates `../forgeline`, or falls back to `https://github.com/zoncaesaradmin/forgeline.git`
 2. checks out `main`
-3. runs `make release`
-4. finds the built `forgeline_*` binaries
+3. auto-detects the release-capable source subdirectory, currently `backend/`
+4. runs `make release` there and finds the built `forgeline_*` binaries
 5. copies them into `release/forgeline/latest/`
 6. regenerates `release/forgeline/latest/SHA256SUMS`
 
@@ -106,6 +106,7 @@ Defaults:
 - fallback source repo: `https://github.com/zoncaesaradmin/forgeline.git`
 - source ref: `main`
 - source checkout: `.build/forgeline`
+- build subdir: auto-detected, currently `backend`
 - target release dir: `release/forgeline/latest`
 
 Optional overrides:
@@ -115,6 +116,8 @@ Optional overrides:
 - `SOURCE_REF`
 - `WORK_ROOT`
 - `SOURCE_DIR`
+- `BUILD_SUBDIR`
+- `BUILD_DIR`
 - `TARGET_DIR`
 
 ## Install to a custom directory

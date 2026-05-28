@@ -9,6 +9,8 @@ FALLBACK_REPO_URL="${FALLBACK_REPO_URL:-https://github.com/zoncaesaradmin/forgel
 SOURCE_REF="${SOURCE_REF:-main}"
 WORK_ROOT="${WORK_ROOT:-${ROOT_DIR}/.build}"
 SOURCE_DIR="${SOURCE_DIR:-${WORK_ROOT}/forgeline}"
+BUILD_SUBDIR="${BUILD_SUBDIR:-}"
+BUILD_DIR="${BUILD_DIR:-}"
 TARGET_DIR="${TARGET_DIR:-${ROOT_DIR}/release/forgeline/latest}"
 
 ARTIFACTS='
@@ -35,6 +37,13 @@ section() {
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "Required command not found: $1"
+}
+
+makefile_supports_release() {
+  makefile_path="$1"
+  [ -f "$makefile_path" ] || return 1
+  grep -q '^release:' "$makefile_path" || return 1
+  grep -q 'forgeline_' "$makefile_path" || return 1
 }
 
 sha256_line() {
@@ -88,14 +97,37 @@ prepare_source_repo() {
 
 run_release_build() {
   section "Build"
-  info "Running make release in ${SOURCE_DIR}"
-  make -C "$SOURCE_DIR" release
+  resolve_build_dir
+  [ -d "$BUILD_DIR" ] || fail "Build directory not found: ${BUILD_DIR}"
+  info "Running make release in ${BUILD_DIR}"
+  make -C "$BUILD_DIR" release
+}
+
+resolve_build_dir() {
+  if [ -n "$BUILD_DIR" ]; then
+    return
+  fi
+
+  if [ -n "$BUILD_SUBDIR" ]; then
+    BUILD_DIR="${SOURCE_DIR}/${BUILD_SUBDIR}"
+    return
+  fi
+
+  for candidate_dir in "$SOURCE_DIR" "$SOURCE_DIR/backend" "$SOURCE_DIR/server"; do
+    if makefile_supports_release "${candidate_dir}/Makefile"; then
+      BUILD_DIR="$candidate_dir"
+      return
+    fi
+  done
+
+  fail "Could not find a release-capable Makefile under ${SOURCE_DIR}. Set BUILD_DIR or BUILD_SUBDIR explicitly."
 }
 
 find_artifact() {
   artifact_name="$1"
 
-  for base_dir in "$SOURCE_DIR/release" "$SOURCE_DIR/dist" "$SOURCE_DIR/build" "$SOURCE_DIR/bin" "$SOURCE_DIR/out"; do
+  resolve_build_dir
+  for base_dir in "$BUILD_DIR/release" "$BUILD_DIR/dist" "$BUILD_DIR/build" "$BUILD_DIR/bin" "$BUILD_DIR/out" "$SOURCE_DIR/release" "$SOURCE_DIR/dist" "$SOURCE_DIR/build" "$SOURCE_DIR/bin" "$SOURCE_DIR/out"; do
     if [ -d "$base_dir" ]; then
       found_path="$(find "$base_dir" -type f -name "$artifact_name" ! -path '*/.git/*' | head -n 1 || true)"
       if [ -n "$found_path" ]; then
@@ -141,6 +173,7 @@ require_command chmod
 require_command mkdir
 require_command awk
 require_command basename
+require_command grep
 require_command head
 
 prepare_source_repo
@@ -151,6 +184,7 @@ write_checksums
 section "Summary"
 info "Source repo: ${SOURCE_DIR}"
 info "Source ref: ${SOURCE_REF}"
+info "Build dir: ${BUILD_DIR}"
 info "Release target: ${TARGET_DIR}"
 info "Artifacts copied:"
 for artifact_name in $ARTIFACTS; do
