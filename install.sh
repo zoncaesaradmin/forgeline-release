@@ -303,6 +303,10 @@ require_forgeline_home() {
   [ -n "$FORGELINE_HOME" ] || fail "FORGELINE_HOME must be set before install. Example: export FORGELINE_HOME=/mnt/large-disk/forgeline"
 }
 
+ensure_forgeline_home_dir() {
+  mkdir -p "$FORGELINE_HOME" 2>/dev/null || fail "Cannot create FORGELINE_HOME at $FORGELINE_HOME"
+}
+
 resolve_default_install_dir() {
   if [ "$(id -u)" -eq 0 ]; then
     printf '%s\n' "$SYSTEM_INSTALL_DIR"
@@ -331,6 +335,7 @@ artifact_stem="$(resolve_artifact_stem)"
 artifact_suffix=''
 
 require_forgeline_home
+ensure_forgeline_home_dir
 
 if [ "$os" = 'windows' ]; then
   artifact_suffix='.exe'
