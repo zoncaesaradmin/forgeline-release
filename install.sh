@@ -275,7 +275,12 @@ require_forgeline_home() {
 }
 
 ensure_forgeline_home_dir() {
-  mkdir -p "$FORGELINE_HOME" 2>/dev/null || fail "Cannot create FORGELINE_HOME at $FORGELINE_HOME"
+  if mkdir -p "$FORGELINE_HOME" 2>/dev/null; then
+    return
+  fi
+
+  parent_dir="$(dirname "$FORGELINE_HOME")"
+  fail "Cannot create FORGELINE_HOME at $FORGELINE_HOME. Create the directory first and ensure your user can write to it, for example: sudo mkdir -p \"$FORGELINE_HOME\" && sudo chown -R \"\$(id -un)\":\"\$(id -gn)\" \"$FORGELINE_HOME\". Parent path: $parent_dir"
 }
 
 resolve_default_install_dir() {
