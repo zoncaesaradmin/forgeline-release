@@ -208,6 +208,8 @@ Manual start command shape:
 $FORGELINE_HOME/.local/bin/forgeline &
 ```
 
+By default, the embedded backend binds `0.0.0.0:8080` and the embedded MCP server binds `0.0.0.0:8081`.
+
 Manual stop command:
 
 ```bash
