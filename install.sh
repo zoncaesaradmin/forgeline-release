@@ -142,10 +142,10 @@ verify_checksum() {
 manual_start_command() {
   case "$os" in
     windows)
-      printf '"%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$target_path" "$runtime_backend_log_file" "$runtime_mcp_log_file"
+      printf '"%s"\n' "$target_path"
       ;;
     *)
-      printf '"%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$target_path" "$runtime_backend_log_file" "$runtime_mcp_log_file"
+      printf '"%s"\n' "$target_path"
       ;;
   esac
 }
@@ -189,34 +189,6 @@ ensure_runtime_log_dir() {
   runtime_mcp_log_dir="$(dirname "$runtime_mcp_log_file")"
   mkdir -p "$runtime_backend_log_dir" 2>/dev/null || true
   mkdir -p "$runtime_mcp_log_dir" 2>/dev/null || true
-}
-
-path_contains_dir() {
-  target_dir="$1"
-  case ":${PATH:-}:" in
-    *":${target_dir}:"*)
-      return 0
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
-
-print_path_guidance() {
-  install_dir_no_slash="${INSTALL_DIR%/}"
-  if path_contains_dir "$install_dir_no_slash"; then
-    info "PATH note: ${install_dir_no_slash} is already on PATH."
-    return
-  fi
-
-  info "PATH note: ${install_dir_no_slash} is not currently on PATH."
-  if [ "$os" = 'windows' ]; then
-    info "Run the binary with its full path, or add ${install_dir_no_slash} to your user PATH."
-  else
-    info "Run the binary with its full path, or add this line to your shell profile:"
-    info "  export PATH=\"${install_dir_no_slash}:\$PATH\""
-  fi
 }
 
 install_binary() {
@@ -263,7 +235,6 @@ install_readme() {
 
   mv -f "$temp_readme" "$readme_target" || fail "Failed to install README at $readme_target"
   readme_installed=1
-  info "README installed at ${readme_target}"
 }
 
 print_forgeline_home_guidance() {
@@ -335,12 +306,7 @@ artifact_file="${tmp_dir}/${artifact_name}"
 readme_installed=0
 
 section "Forgeline Installer"
-info "Product: ${PRODUCT}"
-info "Version: ${VERSION}"
-info "Platform: ${os}/${arch}"
 info "Install path: ${target_path}"
-info "Resolved artifact: ${artifact_name}"
-info "Download source: ${artifact_url}"
 
 download "$checksums_url" "$checksums_file"
 download "$artifact_url" "$artifact_file"
@@ -357,7 +323,6 @@ install_binary "$artifact_file" "$target_path"
 install_readme "$readme_path"
 
 section "Summary"
-info "Binary status: ${binary_action}"
 info "Binary path: ${target_path}"
 info "Backend log file: ${runtime_backend_log_file}"
 info "MCP log file: ${runtime_mcp_log_file}"
@@ -366,6 +331,3 @@ if [ "$readme_installed" -eq 1 ]; then
   info "README path: ${readme_path}"
 fi
 print_manual_run_instructions
-print_path_guidance
-info "Help command: ${install_name}${artifact_suffix} --help"
-info "Logs: the binary writes backend and MCP logs to the files shown above."

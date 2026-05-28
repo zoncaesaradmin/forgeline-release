@@ -199,16 +199,13 @@ $FORGELINE_HOME/.local/bin/forgeline
 After installation:
 
 ```bash
-forgeline --help
+$FORGELINE_HOME/.local/bin/forgeline --help
 ```
-
-If you installed to `$FORGELINE_HOME/.local/bin`, make sure that directory is on your
-`PATH`.
 
 Manual start command shape:
 
 ```bash
-forgeline -backend-log-file "$FORGELINE_HOME/.local/state/forgeline/forgeline.log" -mcp-log-file "$FORGELINE_HOME/.local/state/forgeline/forgeline-mcp.log"
+$FORGELINE_HOME/.local/bin/forgeline
 ```
 
 `FORGELINE_HOME` is the runtime workspace/state home. When set, it drives:
