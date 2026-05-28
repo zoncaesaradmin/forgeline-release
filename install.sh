@@ -145,7 +145,7 @@ manual_start_command() {
       printf '"%s"\n' "$target_path"
       ;;
     *)
-      printf '"%s"\n' "$target_path"
+      printf '"%s" &\n' "$target_path"
       ;;
   esac
 }
@@ -168,11 +168,7 @@ print_manual_run_instructions() {
   info "  $(manual_start_command)"
   info ""
   info "Stop manually:"
-  if [ "$os" = 'windows' ]; then
-    info "  Close the process window, or run: $(manual_stop_command)"
-  else
-    info "  Press Ctrl-C if running in the foreground, or run: $(manual_stop_command)"
-  fi
+  info "  $(manual_stop_command)"
   info ""
 }
 

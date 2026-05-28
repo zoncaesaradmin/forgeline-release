@@ -205,7 +205,13 @@ $FORGELINE_HOME/.local/bin/forgeline --help
 Manual start command shape:
 
 ```bash
-$FORGELINE_HOME/.local/bin/forgeline
+$FORGELINE_HOME/.local/bin/forgeline &
+```
+
+Manual stop command:
+
+```bash
+pkill -f "$FORGELINE_HOME/.local/bin/forgeline"
 ```
 
 `FORGELINE_HOME` is the runtime workspace/state home. When set, it drives:
