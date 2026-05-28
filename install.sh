@@ -10,6 +10,7 @@ REPO_OWNER="${REPO_OWNER:-zoncaesaradmin}"
 REPO_NAME="${REPO_NAME:-forgeline-release}"
 REPO_REF="${REPO_REF:-main}"
 BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_REF}/release}"
+README_URL="${README_URL:-https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_REF}/README.md}"
 SERVICE_ADDR="${SERVICE_ADDR:-:8080}"
 SERVICE_MCP_ADDR="${SERVICE_MCP_ADDR:-:8081}"
 FORGELINE_HOME="${FORGELINE_HOME:-}"
@@ -22,6 +23,10 @@ fail() {
 
 info() {
   printf '%s\n' "$1"
+}
+
+warn() {
+  printf 'Warning: %s\n' "$1" >&2
 }
 
 section() {
@@ -138,13 +143,12 @@ verify_checksum() {
 }
 
 manual_start_command() {
-  runtime_home_display="$(runtime_home_display_value)"
   case "$os" in
     windows)
-      printf 'FORGELINE_HOME="%s" "%s" -addr "%s" -mcp-addr "%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$runtime_home_display" "$target_path" "$SERVICE_ADDR" "$SERVICE_MCP_ADDR" "$runtime_backend_log_file" "$runtime_mcp_log_file"
+      printf '"%s" -addr "%s" -mcp-addr "%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$target_path" "$SERVICE_ADDR" "$SERVICE_MCP_ADDR" "$runtime_backend_log_file" "$runtime_mcp_log_file"
       ;;
     *)
-      printf 'FORGELINE_HOME="%s" "%s" -addr "%s" -mcp-addr "%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$runtime_home_display" "$target_path" "$SERVICE_ADDR" "$SERVICE_MCP_ADDR" "$runtime_backend_log_file" "$runtime_mcp_log_file"
+      printf '"%s" -addr "%s" -mcp-addr "%s" -backend-log-file "%s" -mcp-log-file "%s"\n' "$target_path" "$SERVICE_ADDR" "$SERVICE_MCP_ADDR" "$runtime_backend_log_file" "$runtime_mcp_log_file"
       ;;
   esac
 }
@@ -162,24 +166,17 @@ manual_stop_command() {
 
 print_manual_run_instructions() {
   ensure_runtime_log_dir
-  info "Runtime workspace home:"
-  info "  $(runtime_home_display_value)"
+  info ""
   info "Start manually:"
   info "  $(manual_start_command)"
+  info ""
   info "Stop manually:"
   if [ "$os" = 'windows' ]; then
     info "  Close the process window, or run: $(manual_stop_command)"
   else
     info "  Press Ctrl-C if running in the foreground, or run: $(manual_stop_command)"
   fi
-}
-
-runtime_home_display_value() {
-  if [ -n "${FORGELINE_HOME}" ]; then
-    printf '%s\n' "$FORGELINE_HOME"
-    return
-  fi
-  printf '/path/to/forgeline-home\n'
+  info ""
 }
 
 resolve_runtime_backend_log_file() {
@@ -279,12 +276,35 @@ install_binary() {
   info "Binary ${binary_action} at ${target_file}"
 }
 
-is_root() {
-  [ "$(id -u)" -eq 0 ]
+install_readme() {
+  readme_target="$1"
+  readme_dir="$(dirname "$readme_target")"
+  temp_readme="${readme_target}.tmp.$$"
+
+  mkdir -p "$readme_dir" 2>/dev/null || fail "Cannot create $readme_dir. Set INSTALL_DIR to a writable directory."
+
+  if ! curl -fsSL "$README_URL" -o "$temp_readme"; then
+    rm -f "$temp_readme" 2>/dev/null || true
+    warn "Could not download README from ${README_URL}"
+    readme_installed=0
+    return
+  fi
+
+  mv -f "$temp_readme" "$readme_target" || fail "Failed to install README at $readme_target"
+  readme_installed=1
+  info "README installed at ${readme_target}"
+}
+
+print_forgeline_home_guidance() {
+  info "FORGELINE_HOME: ${FORGELINE_HOME}"
+}
+
+require_forgeline_home() {
+  [ -n "$FORGELINE_HOME" ] || fail "FORGELINE_HOME must be set before install. Example: export FORGELINE_HOME=/mnt/large-disk/forgeline"
 }
 
 resolve_default_install_dir() {
-  if is_root; then
+  if [ "$(id -u)" -eq 0 ]; then
     printf '%s\n' "$SYSTEM_INSTALL_DIR"
     return
   fi
@@ -310,6 +330,8 @@ install_name="$(resolve_install_name)"
 artifact_stem="$(resolve_artifact_stem)"
 artifact_suffix=''
 
+require_forgeline_home
+
 if [ "$os" = 'windows' ]; then
   artifact_suffix='.exe'
 fi
@@ -329,12 +351,14 @@ if [ -z "$INSTALL_DIR" ]; then
 fi
 
 target_path="${INSTALL_DIR%/}/${install_name}${artifact_suffix}"
+readme_path="${INSTALL_DIR%/}/forgeline-README.md"
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT INT TERM
 
 checksums_file="${tmp_dir}/SHA256SUMS"
 artifact_file="${tmp_dir}/${artifact_name}"
+readme_installed=0
 
 section "Forgeline Installer"
 info "Product: ${PRODUCT}"
@@ -356,12 +380,17 @@ fi
 
 section "Binary"
 install_binary "$artifact_file" "$target_path"
+install_readme "$readme_path"
 
 section "Summary"
 info "Binary status: ${binary_action}"
 info "Binary path: ${target_path}"
 info "Backend log file: ${runtime_backend_log_file}"
 info "MCP log file: ${runtime_mcp_log_file}"
+print_forgeline_home_guidance
+if [ "$readme_installed" -eq 1 ]; then
+  info "README path: ${readme_path}"
+fi
 print_manual_run_instructions
 print_path_guidance
 info "Help command: ${install_name}${artifact_suffix} --help"

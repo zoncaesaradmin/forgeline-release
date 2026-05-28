@@ -35,6 +35,7 @@ default install directory.
 Default install:
 
 ```bash
+export FORGELINE_HOME=/mnt/large-disk/forgeline
 curl -fsSL https://raw.githubusercontent.com/zoncaesaradmin/forgeline-release/main/install.sh | bash
 ```
 
@@ -49,14 +50,14 @@ Explicit user-local install:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zoncaesaradmin/forgeline-release/main/install.sh | \
-  INSTALL_DIR="$HOME/.local/bin" bash
+  FORGELINE_HOME=/mnt/large-disk/forgeline INSTALL_DIR="$HOME/.local/bin" bash
 ```
 
-System-wide install:
+Explicit install directory override:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zoncaesaradmin/forgeline-release/main/install.sh | \
-  sudo env INSTALL_DIR=/usr/local/bin bash
+  FORGELINE_HOME=/mnt/large-disk/forgeline INSTALL_DIR=/opt/forgeline/bin bash
 ```
 
 Recommended install when workspaces should live on a larger mounted disk:
@@ -70,7 +71,7 @@ curl -fsSL https://raw.githubusercontent.com/zoncaesaradmin/forgeline-release/ma
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zoncaesaradmin/forgeline-release/main/install.sh | \
-  PRODUCT=forgeline VERSION=v0.1.0 INSTALL_DIR="$HOME/.local/bin" bash
+  PRODUCT=forgeline VERSION=v0.1.0 FORGELINE_HOME=/mnt/large-disk/forgeline INSTALL_DIR="$HOME/.local/bin" bash
 ```
 
 ## Install behavior by platform
@@ -131,7 +132,7 @@ Optional overrides:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zoncaesaradmin/forgeline-release/main/install.sh | \
-  PRODUCT=forgeline VERSION=latest INSTALL_DIR="$HOME/.local/bin" bash
+  PRODUCT=forgeline VERSION=latest FORGELINE_HOME=/mnt/large-disk/forgeline INSTALL_DIR=/opt/forgeline/bin bash
 ```
 
 ## What the installer does
@@ -143,9 +144,9 @@ The installer:
 3. downloads `SHA256SUMS` and the matching binary
 4. verifies the checksum by default
 5. installs or updates the binary in `INSTALL_DIR`
-6. prints what it installed, updated, or skipped
-7. prints the log file location
-8. prints manual start and stop commands for the combined backend+MCP app for the current platform
+6. installs a local copy of this repo README as `forgeline-README.md` next to the binary
+7. prints what it installed, updated, or skipped
+8. prints the log file locations, the configured `FORGELINE_HOME`, and simple manual start/stop commands
 
 Default settings:
 
@@ -153,16 +154,20 @@ Default settings:
 - `VERSION=latest`
 - `INSTALL_DIR=$HOME/.local/bin` for non-root users
 - `INSTALL_DIR=/usr/local/bin` for root
+- `FORGELINE_HOME` must be set before install
 - `VERIFY_CHECKSUMS=1`
 - `REPO_OWNER=zoncaesaradmin`
 - `REPO_NAME=forgeline-release`
 - `REPO_REF=main`
 - `SERVICE_ADDR=:8080`
+- `SERVICE_MCP_ADDR=:8081`
 
 Optional overrides:
 
+- `FORGELINE_HOME`
 - `BINARY_NAME`
 - `BASE_URL`
+- `README_URL`
 
 ## Upgrade behavior
 
@@ -206,10 +211,10 @@ If you installed to `$HOME/.local/bin`, make sure that directory is on your
 Manual start command shape:
 
 ```bash
-FORGELINE_HOME="/mnt/large-disk/forgeline" forgeline -addr ":8080" -mcp-addr ":8081" -backend-log-file "<platform-backend-log-file>" -mcp-log-file "<platform-mcp-log-file>"
+forgeline -addr ":8080" -mcp-addr ":8081" -backend-log-file "<platform-backend-log-file>" -mcp-log-file "<platform-mcp-log-file>"
 ```
 
-`FORGELINE_HOME` is the required runtime home unless you pass an explicit backend state directory flag. It becomes the base directory for:
+`FORGELINE_HOME` is the runtime workspace/state home. When set, it drives:
 
 ```text
 $FORGELINE_HOME/state
@@ -217,16 +222,21 @@ $FORGELINE_HOME/state/workspaces
 $FORGELINE_HOME/state/controlplane.sqlite
 ```
 
-If `FORGELINE_HOME` is not set and you do not pass an explicit backend state directory, the binary will fail fast at startup.
+`FORGELINE_HOME` is required for the release installer and for normal installed runtime usage. Set it before running the installer and keep it available in the environment when starting forgeline.
 
 ## Logs
 
-The installer suggests user-writable backend and MCP log paths for the current platform, for
-example:
+The installer suggests user-writable backend and MCP log paths for the current platform, for example:
 
 - macOS: `$HOME/Library/Logs/forgeline/forgeline.log` and `$HOME/Library/Logs/forgeline/forgeline-mcp.log`
 - Linux: `$HOME/.local/state/forgeline/forgeline.log` and `$HOME/.local/state/forgeline/forgeline-mcp.log`
 - Windows: `%USERPROFILE%/AppData/Local/forgeline/logs/forgeline.log` and `%USERPROFILE%/AppData/Local/forgeline/logs/forgeline-mcp.log`
+
+For more runtime options after install, the installer also places a local copy of this README at:
+
+```text
+<install-dir>/forgeline-README.md
+```
 
 ## Uninstall
 
