@@ -1,0 +1,117 @@
+version: 1
+
+profiles:
+  - name: "platform-dev"
+    description: "Platform development multi-repo work profile"
+    repos:
+      - name: "platformkit"
+        enabled_by_default: true
+      - name: "zoncore"
+        enabled_by_default: false
+      - name: "forgeline"
+        enabled_by_default: true
+      - name: "forgeline-release"
+        enabled_by_default: true
+
+  - name: "telemetry-dev"
+    description: "Telemetry development multi-repo work profile"
+    repos:
+      - name: "platformkit"
+        enabled_by_default: true
+
+  - name: "simulation-dev"
+    description: "Simulation development multi-repo work profile"
+    repos:
+      - name: "platformkit"
+        enabled_by_default: true
+      - name: "forgeline"
+        enabled_by_default: true
+
+repos:
+  - name: "platformkit"
+    branch: "main"
+    build_components:
+      - "platform"
+    clone:
+      ssh: "git@github.com:zoncaesaradmin/platformkit.git"
+      https: "https://github.com/zoncaesaradmin/platformkit.git"
+
+  - name: "zonbundle"
+    branch: "main"
+    build_components:
+      - "bundle"
+    clone:
+      ssh: "git@github.com:zoncaesaradmin/zonbundle.git"
+      https: "https://github.com/zoncaesaradmin/zonbundle.git"
+
+  - name: "zoncore"
+    branch: "main"
+    build_components:
+      - "core"
+    clone:
+      ssh: "git@github.com:zoncaesaradmin/zoncore.git"
+      https: "https://github.com/zoncaesaradmin/zoncore.git"
+
+  - name: "forgeline"
+    branch: "main"
+    build_components:
+      - "control"
+    clone:
+      ssh: "git@github.com:zoncaesaradmin/forgeline.git"
+      https: "https://github.com/zoncaesaradmin/forgeline.git"
+
+  - name: "forgeline-release"
+    branch: "main"
+    build_components:
+      - "release"
+    clone:
+      ssh: "git@github.com:zoncaesaradmin/forgeline-release.git"
+      https: "https://github.com/zoncaesaradmin/forgeline-release.git"
+
+build:
+  default_execution:
+    mode: "repo_script"
+    script_path: "build.sh"
+  targets:
+    - target_name: "platformkit"
+      accepted_names:
+        - "platform"
+      repo_name: "platformkit"
+      target_key:
+        - "platform"
+      artifact:
+        type: "local"
+        location: "dist/app.tar.gz"
+      deploy:
+        script: "deploy.sh"
+
+    - target_name: "zonbundle"
+      accepted_names:
+        - "bundle"
+      repo_name: "zonbundle"
+      target_key:
+        - "bundle"
+      execution:
+        mode: "make_target"
+        make_target: "build"
+
+    - target_name: "zoncore"
+      accepted_names:
+        - "core"
+      repo_name: "zoncore"
+      target_key:
+        - "core"
+
+    - target_name: "forgeline"
+      accepted_names:
+        - "control"
+      repo_name: "forgeline"
+      target_key:
+        - "control"
+
+    - target_name: "forgeline-release"
+      accepted_names:
+        - "release"
+      repo_name: "forgeline-release"
+      target_key:
+        - "release"
